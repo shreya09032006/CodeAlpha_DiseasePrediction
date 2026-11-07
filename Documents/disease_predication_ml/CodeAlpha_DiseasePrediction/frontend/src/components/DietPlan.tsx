@@ -11,6 +11,39 @@ const CONDITIONS: Record<string, string> = {
   breast: "breast cancer",
 };
 
+type Meal = { label: string; text: string };
+type Day = { name: string; meals: Meal[] };
+
+const DAY_RE = /^(mon|tues|wednes|thurs|fri|satur|sun)day/i;
+const ICONS: Record<string, string> = {
+  breakfast: "free_breakfast",
+  lunch: "lunch_dining",
+  snack: "nutrition",
+  dinner: "dinner_dining",
+  exercise: "fitness_center",
+};
+
+function parsePlan(md: string): { days: Day[]; notes: string } {
+  const days: Day[] = [];
+  const notes: string[] = [];
+  for (const part of md.split(/^##\s+/m).slice(1)) {
+    const nl = part.indexOf("\n");
+    const title = (nl === -1 ? part : part.slice(0, nl)).trim();
+    const body = nl === -1 ? "" : part.slice(nl + 1);
+    if (DAY_RE.test(title)) {
+      const meals: Meal[] = [];
+      for (const line of body.split("\n")) {
+        const m = line.match(/^\s*[-*]\s*\*\*(.+?)\*\*\s*:?\s*(.*)$/) ?? line.match(/^\s*[-*]\s*\*\*(.+?):\*\*\s*(.*)$/);
+        if (m) meals.push({ label: m[1].replace(/:$/, "").trim(), text: m[2].replace(/\*\*/g, "").trim() });
+      }
+      days.push({ name: title.replace(/[^A-Za-z]/g, ""), meals });
+    } else {
+      notes.push(body.trim());
+    }
+  }
+  return { days, notes: notes.filter(Boolean).join("\n\n") };
+}
+
 export default function DietPlan() {
   const [params] = useSearchParams();
   const fromResult = params.get("condition");
@@ -25,6 +58,7 @@ export default function DietPlan() {
   });
   const [plan, setPlan] = useState("");
   const [sources, setSources] = useState<string[]>([]);
+  const [day, setDay] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const cardRef = useRef<HTMLElement>(null);
@@ -43,6 +77,7 @@ export default function DietPlan() {
     setLoading(true);
     setError("");
     setPlan("");
+    setDay(0);
     try {
       const res = await axios.post(`${API_URL}/diet-plan`, {
         condition: form.condition,
@@ -158,16 +193,62 @@ export default function DietPlan() {
         </div>
       )}
 
-      {plan && (
-        <div className="markdown" style={{ marginTop: "28px" }}>
-          <ReactMarkdown>{plan}</ReactMarkdown>
-          {sources.length > 0 && (
-            <div className="diet-sources">
-              Based on: {sources.map((s) => s.replace(/^Source:\s*/i, "")).join(" · ")}
-            </div>
-          )}
-        </div>
-      )}
+      {plan && (() => {
+        const { days, notes } = parsePlan(plan);
+        const current = days[Math.min(day, days.length - 1)];
+        return (
+          <div style={{ marginTop: "28px" }}>
+            {days.length >= 3 ? (
+              <>
+                <div className="day-tabs" role="tablist">
+                  {days.map((d, i) => (
+                    <button
+                      key={d.name}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === day}
+                      className={`day-tab${i === day ? " active" : ""}`}
+                      onClick={() => setDay(i)}
+                    >
+                      {d.name.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
+                <h3 className="day-title">{current.name}</h3>
+                <div className="meal-list">
+                  {current.meals.map((m) => (
+                    <div className="meal-row" key={m.label}>
+                      <div className="meal-icon">
+                        <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+                          {ICONS[m.label.toLowerCase()] ?? "restaurant"}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="meal-label">{m.label}</div>
+                        <div className="meal-text">{m.text}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {notes && (
+                  <div className="plan-note markdown">
+                    <ReactMarkdown>{notes}</ReactMarkdown>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="markdown">
+                <ReactMarkdown>{plan}</ReactMarkdown>
+              </div>
+            )}
+            {sources.length > 0 && (
+              <div className="diet-sources">
+                Based on: {sources.map((s) => s.replace(/^Source:\s*/i, "")).join(" · ")}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </section>
   );
 }

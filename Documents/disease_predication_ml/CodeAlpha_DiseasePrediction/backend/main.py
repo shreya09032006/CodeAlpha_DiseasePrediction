@@ -96,3 +96,5 @@ def diet_plan(req: DietPlanRequest):
         print("diet-plan error:", repr(e))
         raise HTTPException(status_code=503, detail="Assistant unavailable")
     return {"plan": plan, "sources": sources}
+from extras import router as extras_router
+app.include_router(extras_router)

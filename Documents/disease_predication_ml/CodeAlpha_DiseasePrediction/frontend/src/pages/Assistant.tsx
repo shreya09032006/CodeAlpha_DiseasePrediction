@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
+import ReactMarkdown from "react-markdown";
+import DietPlan from "../components/DietPlan";
 
 interface Msg {
   role: "user" | "assistant";
@@ -31,7 +33,7 @@ export default function Assistant() {
 
   const speak = (text: string) => {
     if (!speakOn || !("speechSynthesis" in window)) return;
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(text.replace(/[*#_`]/g, ""));
     u.lang = "en-IN";
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
@@ -53,7 +55,7 @@ export default function Assistant() {
         ...m,
         {
           role: "assistant",
-          text: "I can't reach the assistant backend yet. Once the guideline search service is added, I'll answer diet and exercise questions here.",
+          text: "Couldn't get a response. Please check that the backend is running and try again.",
         },
       ]);
     } finally {
@@ -114,6 +116,8 @@ export default function Assistant() {
           ))}
         </div>
 
+        <DietPlan />
+
         <div className="messages">
           {msgs.map((m, i) => (
             <div key={i} className={`msg-row ${m.role}`}>
@@ -123,7 +127,15 @@ export default function Assistant() {
                 </span>
               </div>
               <div className="msg-body">
-                <div className={`bubble ${m.role}`}>{m.text}</div>
+                <div className={`bubble ${m.role}`}>
+                  {m.role === "assistant" ? (
+                    <div className="markdown">
+                    <ReactMarkdown>{m.text}</ReactMarkdown>
+                    </div>
+                   ) : (
+                    m.text
+                     )}
+                  </div>
                 <span className="msg-stamp">
                   {m.role === "assistant" ? "VitalSense Clinical AI" : "Delivered"}
                 </span>

@@ -4,6 +4,9 @@ import pandas as pd
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException
+from pydantic import BaseModel
+import rag
 from schemas import BreastCancerInput, HeartInput, DiabetesInput
 
 MODEL_DIR = Path("models")
@@ -22,6 +25,15 @@ app.add_middleware(
 )
 
 
+def risk_level(p: float) -> str:
+    # Display levels only: Low below 35%, Moderate 35-65%, High from 65%
+    if p >= 0.65:
+        return "High"
+    if p >= 0.35:
+        return "Moderate"
+    return "Low"
+
+
 def predict(name: str, payload):
     features = META[name]["features"]
     df = pd.DataFrame([payload.model_dump()])[features]
@@ -31,7 +43,7 @@ def predict(name: str, payload):
         "model": META[name]["model"],
         "prediction": int(prob >= 0.5),
         "probability": round(prob, 4),
-        "risk": "High" if prob >= 0.5 else "Low",
+        "risk": risk_level(prob),
     }
 
 
@@ -53,3 +65,34 @@ def heart(data: HeartInput):
 @app.post("/predict/diabetes")
 def diabetes(data: DiabetesInput):
     return predict("diabetes", data)
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class DietPlanRequest(BaseModel):
+    condition: str
+    age: int
+    weight_kg: float
+    diet: str = "vegetarian"
+    allergies: str = "none"
+
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    try:
+        reply, sources = rag.answer(req.message)
+    except Exception as e:
+        print("chat error:", repr(e))
+        raise HTTPException(status_code=503, detail="Assistant unavailable")
+    return {"reply": reply, "sources": sources}
+
+
+@app.post("/diet-plan")
+def diet_plan(req: DietPlanRequest):
+    try:
+        plan, sources = rag.diet_plan(req.model_dump())
+    except Exception as e:
+        print("diet-plan error:", repr(e))
+        raise HTTPException(status_code=503, detail="Assistant unavailable")
+    return {"plan": plan, "sources": sources}

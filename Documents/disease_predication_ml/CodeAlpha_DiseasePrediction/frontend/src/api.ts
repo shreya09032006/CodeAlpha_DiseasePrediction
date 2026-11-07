@@ -9,7 +9,7 @@ export interface PredictionResult {
   model: string;
   prediction: number;
   probability: number;
-  risk: "High" | "Low";
+  risk: "High" | "Moderate" | "Low";
 }
 
 export async function predict(

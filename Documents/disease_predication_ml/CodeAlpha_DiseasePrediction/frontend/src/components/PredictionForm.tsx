@@ -1,14 +1,23 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { FormEvent } from "react";
 import { predict } from "../api";
 import type { PredictionResult } from "../api";
 import type { Disease } from "../diseases";
+import { usePersistentState } from "../usePersistentState";
 
 export default function PredictionForm({ disease }: { disease: Disease }) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<PredictionResult | null>(null);
+  const [values, setValues] = usePersistentState<Record<string, string>>(`form-${disease.id}`, {});
+  const [result, setResult] = usePersistentState<PredictionResult | null>(`result-${disease.id}`, null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const goToPlan = () => {
+    const age = values.age ?? values.Age ?? "";
+    navigate(`/assistant?condition=${disease.id}${age ? `&age=${age}` : ""}`);
+  };
+  const goToDoctors = () => navigate(`/doctors?disease=${disease.id}`);
 
   const handleChange = (name: string, value: string) =>
     setValues((v) => ({ ...v, [name]: value }));
@@ -121,17 +130,17 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
 
       {result && (
         <div className="result-card-wrap">
-          <div className={`result ${result.risk === "High" ? "high" : "low"}`}>
+          <div className={`result ${result.risk.toLowerCase()}`}>
             <div className="result-header">
               <div>
                 <span className="result-badge">
-                  <span className={`pulse-dot ${result.risk === "High" ? "crimson" : ""}`} />
-                  {result.risk === "High" ? "Elevated Probability" : "Optimal Range"}
+                  <span className={`pulse-dot ${result.risk === "High" ? "crimson" : result.risk === "Moderate" ? "amber" : ""}`} />
+                  {result.risk === "High" ? "Elevated Probability" : result.risk === "Moderate" ? "Moderate Probability" : "Optimal Range"}
                 </span>
                 <h3>{result.risk} risk</h3>
               </div>
               <span className="material-symbols-outlined result-icon">
-                {result.risk === "High" ? "warning" : "verified_user"}
+                {result.risk === "High" ? "warning" : result.risk === "Moderate" ? "info" : "verified_user"}
               </span>
             </div>
 
@@ -152,9 +161,26 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
 
             <div className="result-footer">
               <span>Model used: {result.model}</span>
-              <span>Confidence: {result.risk === "High" ? "High" : "Optimal"}</span>
+              <span>Risk level: {result.risk}</span>
             </div>
           </div>
+
+          {result.risk !== "Low" && (
+            <div className="next-steps">
+              <button type="button" className="btn primary" onClick={goToPlan}>
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  restaurant
+                </span>
+                <span>Get my diet &amp; exercise plan</span>
+              </button>
+              <button type="button" className="btn ghost" onClick={goToDoctors}>
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  location_on
+                </span>
+                <span>Find nearby doctors</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { DISEASES } from "../diseases";
 import PredictionForm from "../components/PredictionForm";
+import { usePersistentState } from "../usePersistentState";
 
 export default function Predict() {
-  const [activeId, setActiveId] = useState(DISEASES[0].id);
+  const [activeId, setActiveId] = usePersistentState("predict-tab", DISEASES[0].id);
   const active = DISEASES.find((d) => d.id === activeId)!;
 
   return (

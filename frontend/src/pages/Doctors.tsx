@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -31,7 +32,10 @@ export default function Doctors() {
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
 
-  const [specId, setSpecId] = useState(SPECIALTIES[0].id);
+  const [params] = useSearchParams();
+  const initialSpec =
+    SPECIALTIES.find((s) => s.id === params.get("disease"))?.id ?? SPECIALTIES[0].id;
+  const [specId, setSpecId] = useState(initialSpec);
   const [radius, setRadius] = useState(10000);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);

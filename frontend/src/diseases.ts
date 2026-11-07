@@ -19,8 +19,8 @@ export interface Disease {
 }
 
 const yesNo = [
-  { value: 1, label: "Yes" },
-  { value: 0, label: "No" },
+  { value: 0, label: "0 – No" },
+  { value: 1, label: "1 – Yes" },
 ];
 
 export const DISEASES: Disease[] = [
@@ -36,23 +36,70 @@ export const DISEASES: Disease[] = [
         label: "Sex",
         type: "select",
         options: [
-          { value: 1, label: "Male" },
-          { value: 0, label: "Female" },
+          { value: 0, label: "0 – Female" },
+          { value: 1, label: "1 – Male" },
         ],
       },
-      { name: "cp", label: "Chest pain type", min: 0, max: 3, step: 1, hint: "0–3, as coded in the dataset" },
+      {
+        name: "cp",
+        label: "Chest pain type",
+        type: "select",
+        options: [
+          { value: 1, label: "0 – Typical angina" },
+          { value: 2, label: "1 – Atypical angina" },
+          { value: 3, label: "2 – Non-anginal pain" },
+          { value: 4, label: "3 – No symptoms (asymptomatic)" },
+        ],
+      },
       { name: "trestbps", label: "Resting blood pressure (mm Hg)", min: 50, max: 250, step: 1 },
       { name: "chol", label: "Cholesterol (mg/dl)", min: 100, max: 600, step: 1 },
       { name: "fbs", label: "Fasting blood sugar > 120 mg/dl", type: "select", options: yesNo },
-      { name: "restecg", label: "Resting ECG result", min: 0, max: 2, step: 1, hint: "0–2" },
+      {
+        name: "restecg",
+        label: "Resting ECG result",
+        type: "select",
+        options: [
+          { value: 0, label: "0 – Normal" },
+          { value: 1, label: "1 – ST-T wave abnormality" },
+          { value: 2, label: "2 – Left ventricular hypertrophy" },
+        ],
+      },
       { name: "thalach", label: "Max heart rate achieved", min: 60, max: 220, step: 1 },
       { name: "exang", label: "Exercise-induced angina", type: "select", options: yesNo },
       { name: "oldpeak", label: "ST depression (oldpeak)", min: 0, max: 10, step: 0.1 },
-      { name: "slope", label: "Slope of peak exercise ST", min: 0, max: 2, step: 1, hint: "0–2" },
-      { name: "ca", label: "Major vessels colored (ca)", min: 0, max: 4, step: 1, hint: "0–4" },
-      { name: "thal", label: "Thalassemia (thal)", min: 0, max: 3, step: 1, hint: "0–3" },
+      {
+        name: "slope",
+        label: "Slope of peak exercise ST",
+        type: "select",
+        options: [
+          { value: 1, label: "0 – Upsloping" },
+          { value: 2, label: "1 – Flat" },
+          { value: 3, label: "2 – Downsloping" },
+        ],
+      },
+      {
+        name: "ca",
+        label: "Major vessels colored by fluoroscopy",
+        type: "select",
+        options: [
+          { value: 0, label: "0" },
+          { value: 1, label: "1" },
+          { value: 2, label: "2" },
+          { value: 3, label: "3" },
+        ],
+      },
+      {
+        name: "thal",
+        label: "Thalassemia (blood disorder test)",
+        type: "select",
+        options: [
+          { value: 3, label: "3 – Normal" },
+          { value: 6, label: "6 – Fixed defect" },
+          { value: 7, label: "7 – Reversible defect" },
+        ],
+      },
     ],
-    sample: { age: 63, sex: 1, cp: 3, trestbps: 145, chol: 233, fbs: 1, restecg: 0, thalach: 150, exang: 0, oldpeak: 2.3, slope: 0, ca: 0, thal: 1 },
+    sample: { age: 67, sex: 1, cp: 4, trestbps: 160, chol: 286, fbs: 0, restecg: 2, thalach: 108, exang: 1, oldpeak: 1.5, slope: 2, ca: 3, thal: 3 },
   },
   {
     id: "diabetes",

@@ -28,9 +28,18 @@ def load_breast():
     return X, y
 
 
+
+HEART_COLS = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+              "thalach", "exang", "oldpeak", "slope", "ca", "thal", "num"]
+
+
 def load_heart():
-    df = pd.read_csv(DATA / "heart.csv")
-    return df.drop(columns="target"), df["target"]
+    # Original UCI Cleveland file: no header, "?" marks missing values
+    df = pd.read_csv(DATA / "heart_cleveland.data", header=None,
+                     names=HEART_COLS, na_values="?")
+    X = df.drop(columns="num")
+    y = (df["num"] > 0).astype(int)  # 0 = no disease, 1-4 = disease
+    return X, y
 
 
 def load_diabetes():

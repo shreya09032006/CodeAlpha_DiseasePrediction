@@ -1856,3 +1856,51 @@ input:focus, select:focus {
     opacity: 0;
   }
 }
+
+/* ---------- Markdown content (chat replies and diet plan) ---------- */
+.markdown { font-size: 15px; line-height: 1.6; color: var(--text); }
+.markdown > *:first-child { margin-top: 0; }
+.markdown > *:last-child { margin-bottom: 0; }
+.markdown h1, .markdown h2, .markdown h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  margin: 20px 0 8px;
+  color: var(--text);
+}
+.markdown h1 { font-size: 1.3rem; }
+.markdown h2 { font-size: 1.15rem; }
+.markdown h3 { font-size: 1.05rem; }
+.markdown p { margin: 8px 0; }
+.markdown ul, .markdown ol { padding-left: 20px; margin: 8px 0; }
+.markdown li { margin: 4px 0; }
+.markdown strong { color: var(--text); font-weight: 600; }
+.markdown em { color: var(--muted); }
+.markdown hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+.diet-sources { margin-top: 18px; font-size: 12px; color: var(--muted-light); }
+
+/* ---------- Moderate risk level ---------- */
+:root,
+[data-theme="dark"] {
+  --mod-bg: rgba(245, 158, 11, 0.16);
+  --mod-border: rgba(245, 158, 11, 0.4);
+  --mod-text: #fbbf24;
+}
+[data-theme="light"] {
+  --mod-bg: rgba(217, 119, 6, 0.12);
+  --mod-border: rgba(217, 119, 6, 0.35);
+  --mod-text: #b45309;
+}
+.pulse-dot.amber { background: #f59e0b; }
+.result.moderate { background: var(--mod-bg); border: 1px solid var(--mod-border); }
+.result.moderate .result-badge {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--mod-text);
+  border: 1px solid var(--mod-border);
+}
+.result.moderate h3,
+.result.moderate .result-icon,
+.result.moderate .result-percentage { color: var(--mod-text); }
+.result.moderate .result-progress-bar { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+
+/* ---------- Next steps after a result ---------- */
+.next-steps { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 20px; }

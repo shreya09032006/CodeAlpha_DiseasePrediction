@@ -181,7 +181,7 @@ def assess_report(body: AssessIn):
         "How to judge: be conservative and fair. Call a value out of range only if it is clearly outside "
         "the usual adult range or outside the reference range printed on the report. If the report does not "
         "say whether a test was fasting, after a meal or after a glucose load (for example insulin or "
-        "glucose), do not call it abnormal; say it cannot be judged without that context. Ignore items that "
+        "glucose), do not call it abnormal; say it cannot be judged without that context. Never assume or add context the report does not state (for example do not call a value 'fasting' unless the report says so). Ignore items that "
         "are not standard clinical results (for example pregnancy count, skin thickness or a pedigree "
         "score). Choose Low when nothing is clearly out of range, Moderate only for borderline or clearly "
         "elevated values, and High only for markedly abnormal values.\n"

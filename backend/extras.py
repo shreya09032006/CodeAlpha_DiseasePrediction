@@ -178,6 +178,13 @@ def assess_report(body: AssessIn):
         "3. One sentence saying only these few values were available, so the picture is partial.\n"
         "4. Two or three practical lifestyle pointers, only if the guideline notes support them.\n"
         "5. One closing sentence: share the report with a doctor; this is not a diagnosis.\n"
+        "How to judge: be conservative and fair. Call a value out of range only if it is clearly outside "
+        "the usual adult range or outside the reference range printed on the report. If the report does not "
+        "say whether a test was fasting, after a meal or after a glucose load (for example insulin or "
+        "glucose), do not call it abnormal; say it cannot be judged without that context. Ignore items that "
+        "are not standard clinical results (for example pregnancy count, skin thickness or a pedigree "
+        "score). Choose Low when nothing is clearly out of range, Moderate only for borderline or clearly "
+        "elevated values, and High only for markedly abnormal values.\n"
         "Rules: use only the values above, never invent numbers, never mention medicines or doses, "
         "never say 'you have' a disease, stay under 200 words."
     )

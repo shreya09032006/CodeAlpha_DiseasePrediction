@@ -1945,3 +1945,62 @@ input:focus, select:focus {
   background: color-mix(in srgb, var(--accent-2) 5%, transparent);
 }
 .place-input::placeholder { color: var(--muted); }
+
+/* assess-v2 */
+.assess2 { margin-top: 24px; border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--accent-2) 5%, transparent); }
+.assess2-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--accent-2) 9%, transparent); }
+.assess2-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  font-size: 22px; color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 16%, transparent); }
+.assess2-title { font-weight: 700; font-size: 16px; }
+.assess2-sub { font-size: 12px; color: var(--muted); }
+.assess2-badge { margin-left: auto; padding: 6px 14px; border-radius: 999px; font-size: 13px;
+  font-weight: 700; text-transform: capitalize; border: 1px solid transparent; }
+.assess2-badge.low { color: #16a34a; background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.35); }
+.assess2-badge.moderate { color: #d97706; background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.35); }
+.assess2-badge.high { color: #dc2626; background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.35); }
+.assess2-body { padding: 18px 20px 6px; line-height: 1.65; font-size: 14.5px; }
+.assess2-body p { margin: 0 0 12px; }
+.assess2-body ul { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+.assess2-body li { position: relative; padding: 10px 14px 10px 34px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-2) 7%, transparent);
+  border: 1px solid var(--border-subtle); }
+.assess2-body li::before { content: ""; position: absolute; left: 14px; top: 17px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--accent-2); }
+.assess2-body strong { font-weight: 700; }
+.assess2-loading { display: flex; align-items: center; gap: 6px; padding: 18px 20px; color: var(--muted); }
+.assess2-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-2);
+  animation: assess2-bounce 1s infinite ease-in-out; }
+.assess2-dot:nth-child(2) { animation-delay: .15s; }
+.assess2-dot:nth-child(3) { animation-delay: .3s; margin-right: 6px; }
+@keyframes assess2-bounce { 0%,80%,100% { transform: scale(.6); opacity: .5; } 40% { transform: scale(1); opacity: 1; } }
+.assess2-sources { padding: 4px 20px 0; font-size: 12px; color: var(--muted); }
+.assess2-foot { display: flex; align-items: center; gap: 6px; margin-top: 14px; padding: 12px 20px;
+  font-size: 12px; color: var(--muted); border-top: 1px solid var(--border-subtle); }
+
+/* place-input-v2 */
+.place-input { min-width: 290px; padding: 12px 18px; border-radius: 14px; font-size: 14px;
+  color: inherit; outline: none;
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+  transition: border-color .15s, box-shadow .15s, background .15s; }
+.place-input::placeholder { color: var(--muted); opacity: .9; }
+.place-input:hover { border-color: color-mix(in srgb, var(--accent-2) 70%, transparent); }
+.place-input:focus { border-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 16%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-2) 22%, transparent); }
+[data-theme="light"] .place-input { background: #fff; border-color: color-mix(in srgb, var(--accent-2) 50%, #cbd5e1); }
+[data-theme="light"] .place-input:focus { background: #fff; }
+
+/* toolbar-one-line */
+@media (min-width: 1000px) {
+  .toolbar { flex-wrap: nowrap !important; flex-direction: row !important; align-items: center; gap: 10px; }
+  .toolbar > div:first-child { flex-wrap: nowrap !important; flex: 1 1 auto; min-width: 0; align-items: center; }
+  .toolbar > div:first-child select { flex: 0 0 auto; }
+  .toolbar > div:first-child form { flex: 1 1 auto; min-width: 0; }
+  .toolbar .place-input { flex: 1 1 auto; min-width: 140px; width: 100%; }
+  .toolbar .btn { white-space: nowrap; flex: 0 0 auto; }
+}

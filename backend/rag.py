@@ -36,10 +36,22 @@ def client():
     return _client
 
 
+def _embed_call(batch, tries=3):
+    import time
+    for attempt in range(tries):
+        try:
+            return client().models.embed_content(model=EMBED_MODEL, contents=batch)
+        except Exception as e:
+            busy = getattr(e, "code", None) in (429, 500, 503, 504)
+            if not busy or attempt == tries - 1:
+                raise
+            time.sleep(1.5 * (attempt + 1))
+
+
 def embed(texts):
     vectors = []
     for i in range(0, len(texts), 50):
-        res = client().models.embed_content(model=EMBED_MODEL, contents=texts[i:i + 50])
+        res = _embed_call(texts[i:i + 50])
         vectors += [e.values for e in res.embeddings]
     arr = np.array(vectors, dtype="float32")
     arr /= np.linalg.norm(arr, axis=1, keepdims=True)
@@ -74,18 +86,70 @@ def _load():
 def retrieve(query, k=6):
     _load()
     q = embed([query])[0]
-    top = np.argsort(-(_vectors @ q))[:k]
+    top = np.argsort(-np.einsum("ij,j->i", _vectors, q))[:k]
     return [_chunks[i] for i in top]
 
 
+def _gemini_models():
+    """Primary model first, then GEMINI_FALLBACK_MODELS (comma separated)."""
+    extra = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3.6-flash")
+    out = []
+    for m in [CHAT_MODEL] + [x.strip() for x in extra.split(",")]:
+        if m and m not in out:
+            out.append(m)
+    return out
+
+
+def _groq_text(prompt):
+    import re
+
+    import httpx
+    key, model = os.getenv("GROQ_API_KEY"), os.getenv("GROQ_MODEL")
+    if not key or not model:
+        raise RuntimeError("Groq fallback is not configured")
+    r = httpx.post("https://api.groq.com/openai/v1/chat/completions",
+                   headers={"Authorization": f"Bearer {key}"},
+                   json={"model": model, "temperature": 0.2,
+                         "messages": [{"role": "system", "content": SYSTEM},
+                                      {"role": "user", "content": prompt}]},
+                   timeout=60)
+    r.raise_for_status()
+    text = r.json()["choices"][0]["message"]["content"] or ""
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
+
+
 def _ask(prompt, notes):
-    res = client().models.generate_content(
-        model=CHAT_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(system_instruction=SYSTEM),
-    )
+    import time
+    text, first_error = None, None
+    for i, model in enumerate(_gemini_models()):
+        tries = 2 if i == 0 else 1
+        for attempt in range(tries):
+            try:
+                res = client().models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(system_instruction=SYSTEM),
+                )
+                text = res.text
+                print("Answered by Gemini model:", model)
+                break
+            except Exception as e:
+                first_error = first_error or e
+                print(f"Gemini model {model} failed:", type(e).__name__)
+                if getattr(e, "code", None) not in (429, 500, 503, 504) or attempt == tries - 1:
+                    break
+                time.sleep(1.5)
+        if text is not None:
+            break
+    if text is None:
+        try:
+            print("All Gemini models failed, trying Groq")
+            text = _groq_text(prompt)
+        except Exception as g:
+            print("Groq fallback failed:", type(g).__name__, str(g)[:300])
+            raise RuntimeError(f"Groq fallback failed ({type(g).__name__}: {str(g)[:150]}). Gemini error: {first_error}")
     sources = sorted({c["source"] for c in notes if c["source"]})
-    return res.text, sources
+    return text, sources
 
 
 def answer(message):

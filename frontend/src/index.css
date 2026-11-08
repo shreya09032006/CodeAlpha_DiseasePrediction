@@ -1931,3 +1931,9 @@ input:focus, select:focus {
 .plan-note { margin-top: 18px; padding: 14px 16px; border-radius: 14px; font-size: 14px; color: var(--muted);
   border: 1px dashed color-mix(in srgb, var(--accent-2) 30%, transparent); }
 .plan-note h2, .plan-note h3 { display: none; }
+
+/* report-assessment */
+.assess { margin-top: 24px; padding: 20px; border-radius: 18px;
+  background: color-mix(in srgb, var(--accent-2) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 20%, transparent); }
+.assess-title { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 17px; }

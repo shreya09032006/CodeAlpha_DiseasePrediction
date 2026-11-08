@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 import { API_URL } from "../config";
+
+type Assessment = { summary: string; sources: string[]; note: string };
 
 export default function Reports() {
   const [file, setFile] = useState<File | null>(null);
@@ -9,11 +12,28 @@ export default function Reports() {
   const [values, setValues] = useState<Record<string, string | number> | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [assessing, setAssessing] = useState(false);
+
+  const assess = async (vals: Record<string, string | number>) => {
+    setAssessing(true);
+    setAssessment(null);
+    try {
+      const clean = Object.fromEntries(Object.entries(vals).map(([k, v]) => [k, String(v)]));
+      const res = await axios.post(`${API_URL}/assess-report`, { values: clean });
+      setAssessment(res.data);
+    } catch {
+      setAssessment({ summary: "", sources: [], note: "Couldn't get an assessment right now. The extracted values above are still correct to review." });
+    } finally {
+      setAssessing(false);
+    }
+  };
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
     setFile(f);
     setValues(null);
+    setAssessment(null);
     setError("");
     setPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : "");
   };
@@ -27,8 +47,10 @@ export default function Reports() {
       form.append("file", file);
       const res = await axios.post(`${API_URL}/extract-report`, form);
       setValues(res.data.values);
-    } catch {
-      setError("The report reader isn't connected yet. We'll add this endpoint to the backend next.");
+      assess(res.data.values);
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined;
+      setError(typeof detail === "string" ? detail : "Couldn't reach the report reader. Is the backend running?");
     } finally {
       setLoading(false);
     }
@@ -162,6 +184,32 @@ export default function Reports() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {(assessing || assessment) && (
+          <div className="assess">
+            <h3 className="assess-title">
+              <span className="material-symbols-outlined" style={{ fontSize: "22px" }}>
+                monitoring
+              </span>
+              AI assessment of your report
+            </h3>
+            {assessing && <p className="muted">Reading your values…</p>}
+            {assessment?.summary && (
+              <div className="markdown">
+                <ReactMarkdown>{assessment.summary}</ReactMarkdown>
+              </div>
+            )}
+            {assessment && !assessment.summary && assessment.note && <p className="muted">{assessment.note}</p>}
+            {assessment && assessment.sources.length > 0 && (
+              <div className="diet-sources">
+                Based on: {assessment.sources.map((x) => x.replace(/^Source:\s*/i, "")).join(" · ")}
+              </div>
+            )}
+            <p className="muted" style={{ marginTop: "12px", fontSize: "12px" }}>
+              AI-generated from only the values in your report. It can be wrong and is not a diagnosis.
+            </p>
           </div>
         )}
 

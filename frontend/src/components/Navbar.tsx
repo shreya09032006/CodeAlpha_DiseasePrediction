@@ -24,7 +24,7 @@ export default function Navbar({
             favorite
           </span>
         </div>
-        <span>VitalSense</span>
+        <span>CuraSense AI</span>
       </NavLink>
 
       <nav className="nav-links">

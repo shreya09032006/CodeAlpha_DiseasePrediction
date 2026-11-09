@@ -137,7 +137,7 @@ export default function Assistant() {
                      )}
                   </div>
                 <span className="msg-stamp">
-                  {m.role === "assistant" ? "VitalSense Clinical AI" : "Delivered"}
+                  {m.role === "assistant" ? "CuraSense AI Clinical AI" : "Delivered"}
                 </span>
               </div>
             </div>

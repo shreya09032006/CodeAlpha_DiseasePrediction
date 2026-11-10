@@ -1,0 +1,26 @@
+{
+  "classes": [
+    "normal",
+    "abnormal_heartbeat",
+    "mi",
+    "history_mi"
+  ],
+  "size": [
+    224,
+    320
+  ],
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "arch": "efficientnet_b0",
+  "test_accuracy": 0.95,
+  "test_macro_f1": 0.9487,
+  "trained_on_images": 649
+}

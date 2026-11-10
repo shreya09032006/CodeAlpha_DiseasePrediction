@@ -12,6 +12,7 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
   const [result, setResult] = usePersistentState<PredictionResult | null>(`result-${disease.id}`, null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [voiceKey, setVoiceKey] = useState(0);
   const navigate = useNavigate();
 
   const goToPlan = () => {
@@ -21,6 +22,13 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
   const goToDoctors = () => navigate(`/doctors?disease=${disease.id}`);
   const assumed = (result as (PredictionResult & { assumed?: string[] }) | null)?.assumed ?? [];
   const assumedLabels = disease.fields.filter((f) => assumed.includes(f.name)).map((f) => f.label).join(", ");
+
+  const clearAll = () => {
+    setValues({});
+    setResult(null);
+    setError("");
+    setVoiceKey((k) => k + 1);
+  };
 
   const handleChange = (name: string, value: string) =>
     setValues((v) => ({ ...v, [name]: value }));
@@ -83,7 +91,9 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
       </div>
 
       <VoiceFill
+        key={voiceKey}
         disease={disease}
+        onClear={clearAll}
         onFill={(v) => {
           setValues((old) => ({ ...old, ...v }));
           setResult(null);
@@ -133,6 +143,12 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
               restart_alt
             </span>
             <span>Fill sample data</span>
+          </button>
+          <button className="btn ghost" type="button" onClick={clearAll}>
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              delete_sweep
+            </span>
+            <span>Clear all</span>
           </button>
         </div>
       </form>

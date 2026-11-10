@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import type { Disease } from "../diseases";
 import { API_URL } from "../config";
@@ -16,12 +16,14 @@ type SpeechRec = {
 };
 type SRCtor = new () => SpeechRec;
 
-export default function VoiceFill({ disease, onFill }: { disease: Disease; onFill: (v: Record<string, string>) => void }) {
+export default function VoiceFill({ disease, onFill, onClear }: { disease: Disease; onFill: (v: Record<string, string>) => void; onClear: () => void }) {
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const recRef = useRef<SpeechRec | null>(null);
+
+  useEffect(() => () => recRef.current?.stop(), []);
 
   const w = window as unknown as { SpeechRecognition?: SRCtor; webkitSpeechRecognition?: SRCtor };
   const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
@@ -110,6 +112,10 @@ export default function VoiceFill({ disease, onFill }: { disease: Disease; onFil
         <button type="button" className="btn primary" onClick={fill} disabled={busy}>
           <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>auto_fix_high</span>
           <span>{busy ? "Reading…" : "Fill the form"}</span>
+        </button>
+        <button type="button" className="btn ghost" onClick={onClear}>
+          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_sweep</span>
+          <span>Clear all</span>
         </button>
       </div>
       {msg && <p className="voice-msg">{msg}</p>}

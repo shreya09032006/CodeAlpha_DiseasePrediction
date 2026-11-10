@@ -2004,3 +2004,21 @@ input:focus, select:focus {
   .toolbar .place-input { flex: 1 1 auto; min-width: 140px; width: 100%; }
   .toolbar .btn { white-space: nowrap; flex: 0 0 auto; }
 }
+
+/* voice-fill */
+.voice-fill { margin-bottom: 22px; padding: 16px; border-radius: 16px;
+  border: 1px dashed color-mix(in srgb, var(--accent-2) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-2) 6%, transparent); }
+.voice-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.voice-head small { margin-left: auto; }
+.voice-fill textarea { width: 100%; box-sizing: border-box; resize: vertical; padding: 12px 14px; border-radius: 12px;
+  font: inherit; color: inherit; outline: none;
+  border: 1.5px solid color-mix(in srgb, var(--accent-2) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-2) 8%, transparent); }
+.voice-fill textarea:focus { border-color: var(--accent-2); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-2) 20%, transparent); }
+.voice-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.voice-live { animation: voice-pulse 1.2s infinite; }
+@keyframes voice-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+.voice-msg { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.assumed-note { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; padding: 10px 14px; border-radius: 12px;
+  font-size: 13px; color: #d97706; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.35); }

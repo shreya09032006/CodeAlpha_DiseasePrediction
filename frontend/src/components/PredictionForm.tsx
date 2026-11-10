@@ -5,6 +5,7 @@ import { predict } from "../api";
 import type { PredictionResult } from "../api";
 import type { Disease } from "../diseases";
 import { usePersistentState } from "../usePersistentState";
+import VoiceFill from "./VoiceFill";
 
 export default function PredictionForm({ disease }: { disease: Disease }) {
   const [values, setValues] = usePersistentState<Record<string, string>>(`form-${disease.id}`, {});
@@ -18,6 +19,8 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
     navigate(`/assistant?condition=${disease.id}${age ? `&age=${age}` : ""}`);
   };
   const goToDoctors = () => navigate(`/doctors?disease=${disease.id}`);
+  const assumed = (result as (PredictionResult & { assumed?: string[] }) | null)?.assumed ?? [];
+  const assumedLabels = disease.fields.filter((f) => assumed.includes(f.name)).map((f) => f.label).join(", ");
 
   const handleChange = (name: string, value: string) =>
     setValues((v) => ({ ...v, [name]: value }));
@@ -37,10 +40,18 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
     setResult(null);
     try {
       const payload: Record<string, number> = {};
-      for (const f of disease.fields) payload[f.name] = Number(values[f.name]);
+      for (const f of disease.fields) {
+        const raw = values[f.name];
+        if (raw !== undefined && raw !== "") payload[f.name] = Number(raw);
+      }
+      if (disease.fields.length - Object.keys(payload).length > 3) {
+        setError(`Please fill in at least ${disease.fields.length - 3} of ${disease.fields.length} fields (up to 3 can be left empty).`);
+        return;
+      }
       setResult(await predict(disease.endpoint, payload));
-    } catch {
-      setError("Could not get a prediction. Is the backend running?");
+    } catch (err) {
+      const d = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+      setError(typeof d === "string" ? d : "Could not get a prediction. Is the backend running?");
     } finally {
       setLoading(false);
     }
@@ -71,6 +82,15 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
         </div>
       </div>
 
+      <VoiceFill
+        disease={disease}
+        onFill={(v) => {
+          setValues((old) => ({ ...old, ...v }));
+          setResult(null);
+          setError("");
+        }}
+      />
+
       <form onSubmit={handleSubmit}>
         <div className="grid">
           {disease.fields.map((f) => (
@@ -78,7 +98,6 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
               <span>{f.label}</span>
               {f.type === "select" ? (
                 <select
-                  required
                   value={values[f.name] ?? ""}
                   onChange={(e) => handleChange(f.name, e.target.value)}
                 >
@@ -89,7 +108,6 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
                 </select>
               ) : (
                 <input
-                  required
                   type="number"
                   min={f.min}
                   max={f.max}
@@ -130,6 +148,14 @@ export default function PredictionForm({ disease }: { disease: Disease }) {
 
       {result && (
         <div className="result-card-wrap">
+          {assumed.length > 0 && (
+            <div className="assumed-note">
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>info</span>
+              <span>
+                {assumed.length} value{assumed.length > 1 ? "s were" : " was"} left empty and filled with typical values ({assumedLabels}). Treat this estimate as less reliable.
+              </span>
+            </div>
+          )}
           <div className={`result ${result.risk.toLowerCase()}`}>
             <div className="result-header">
               <div>

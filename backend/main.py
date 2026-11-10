@@ -34,9 +34,28 @@ def risk_level(p: float) -> str:
     return "Low"
 
 
+MAX_MISSING = 3
+_dp = MODEL_DIR / "defaults.json"
+DEFAULTS = json.load(open(_dp)) if _dp.exists() else {}
+
+
 def predict(name: str, payload):
     features = META[name]["features"]
-    df = pd.DataFrame([payload.model_dump()])[features]
+    data = payload.model_dump()
+    missing = [f for f in features if data.get(f) is None]
+    if missing:
+        if len(missing) > MAX_MISSING:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Too many values are missing ({len(missing)}). Please fill in at least "
+                       f"{len(features) - MAX_MISSING} of {len(features)} fields.",
+            )
+        defaults = DEFAULTS.get(name)
+        if not defaults:
+            raise HTTPException(status_code=422, detail="Missing values can't be filled in right now. Please fill every field.")
+        for f in missing:
+            data[f] = defaults[f]
+    df = pd.DataFrame([data])[features]
     prob = float(MODELS[name].predict_proba(df)[0][1])
     return {
         "disease": name,
@@ -44,6 +63,7 @@ def predict(name: str, payload):
         "prediction": int(prob >= 0.5),
         "probability": round(prob, 4),
         "risk": risk_level(prob),
+        "assumed": missing,
     }
 
 

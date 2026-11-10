@@ -192,3 +192,73 @@ def assess_report(body: AssessIn):
         return {"summary": _generate(prompt), "sources": sources, "note": ""}
     except Exception:
         return {"summary": "", "sources": [], "note": "The AI services are busy right now. Please try again in a minute."}
+
+
+
+# ---- voice / text to form values (uses the same Gemini -> Groq chain) ----
+from typing import List
+
+
+class VoiceField(BaseModel):
+    name: str
+    label: str
+    hint: str = ""
+    options: List[Dict[str, str]] = []
+
+
+class VoiceIn(BaseModel):
+    text: str
+    fields: List[VoiceField]
+
+
+@router.post("/parse-voice")
+def parse_voice(body: VoiceIn):
+    text = body.text.strip()[:1500]
+    if not text:
+        raise HTTPException(status_code=400, detail="Nothing was said.")
+    lines = []
+    for f in body.fields:
+        line = f"- {f.name}: {f.label}"
+        if f.hint:
+            line += f" ({f.hint})"
+        if f.options:
+            line += " | choices: " + ", ".join(f"{o['value']}={o['label']}" for o in f.options)
+        lines.append(line)
+    prompt = (
+        "You turn a spoken or typed health description into values for a form.\n"
+        "Form fields:\n" + "\n".join(lines) + "\n\n"
+        f'What the person said: "{text}"\n\n'
+        "Return ONLY a JSON object mapping field names to values.\n"
+        "Rules: include a field only if the person clearly stated it; never guess or invent a value. "
+        "Use plain numbers without units, converting units to the one in the field's hint if needed. "
+        "For a field with choices, return the choice value (for example male -> the value shown for Male). "
+        "Use each field's hint to pick the right number: a blood pressure said as '140 over 90' gives 140 "
+        "for a systolic or resting field and 90 for a diastolic field. 'Sugar' means glucose. "
+        "If nothing matches, return {}."
+    )
+    try:
+        found = _parse_json(_generate(prompt, json_mode=True))
+    except Exception as e:
+        print("parse-voice error:", type(e).__name__, str(e)[:200])
+        raise HTTPException(status_code=503, detail="The AI services are busy. Please try again, or type the values.")
+    allowed = {f.name: f for f in body.fields}
+    values = {}
+    for k, v in (found.items() if isinstance(found, dict) else []):
+        f = allowed.get(k)
+        if f is None or v is None or isinstance(v, (dict, list)):
+            continue
+        s = str(v).strip().replace(",", "")
+        if f.options:
+            by_label = {o["label"].strip().lower(): o["value"] for o in f.options}
+            if s.lower() in by_label:
+                values[k] = by_label[s.lower()]
+                continue
+        try:
+            num = float(s)
+        except ValueError:
+            continue
+        s = str(int(num)) if num.is_integer() else str(round(num, 3))
+        if f.options and s not in {o["value"] for o in f.options}:
+            continue
+        values[k] = s
+    return {"values": values, "heard": text}

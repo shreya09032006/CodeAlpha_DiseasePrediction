@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import type { Theme } from "../theme";
+import { useAuth } from "../auth";
 
 const links = [
   { to: "/", label: "Home" },
@@ -17,6 +18,7 @@ export default function Navbar({
   theme: Theme;
   onToggle: () => void;
 }) {
+  const { user, logout } = useAuth();
   return (
     <header className="navbar">
       <NavLink to="/" className="brand">
@@ -52,11 +54,23 @@ export default function Navbar({
             {theme === "dark" ? "light_mode" : "dark_mode"}
           </span>
         </button>
-        <div className="avatar-badge" aria-hidden="true">
-          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-            person
-          </span>
-        </div>
+        {user ? (
+          <>
+            <span className="nav-user">{user.name.split(" ")[0]}</span>
+            <div className="avatar-badge" title={user.email}>
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <button className="theme-btn" onClick={logout} aria-label="Log out" title="Log out" type="button">
+              <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                logout
+              </span>
+            </button>
+          </>
+        ) : (
+          <NavLink to="/login" className="btn primary nav-login">
+            Log in
+          </NavLink>
+        )}
       </div>
     </header>
   );

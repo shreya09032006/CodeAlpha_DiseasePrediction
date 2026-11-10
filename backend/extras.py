@@ -262,3 +262,75 @@ def parse_voice(body: VoiceIn):
             continue
         values[k] = s
     return {"values": values, "heard": text}
+
+
+
+# ---- ECG image reading by the vision LLM (informational only, not a diagnosis) ----
+ECG_PROMPT = (
+    "You are helping a non-expert understand a picture of an ECG, for education only.\n"
+    "Look at the image. If it is not an ECG tracing, set is_ecg to false.\n"
+    "Return ONLY a JSON object with these keys:\n"
+    '  "is_ecg": true or false,\n'
+    '  "quality": "good", "fair" or "poor" (how readable the image is),\n'
+    '  "heart_rate_bpm": a number only if you can estimate it from the rhythm and the grid, otherwise null,\n'
+    '  "rhythm": a few words, for example "regular", "irregular" or "cannot tell",\n'
+    '  "findings": a list of up to 5 short plain-language observations, only things clearly visible,\n'
+    '  "concern": "Low", "Moderate", "High" or "Cannot tell",\n'
+    '  "summary": two or three calm plain sentences.\n'
+    "Rules: be conservative and fair; describe only what is visible; never state a diagnosis or say "
+    "'you have'; if the tracing looks like a normal rhythm with no clearly abnormal features choose Low; "
+    "use Moderate or High only for clearly visible abnormalities; if the image is unclear choose "
+    "Cannot tell; never mention medicines or doses."
+)
+
+
+@router.post("/analyze-ecg")
+def analyze_ecg(file: UploadFile = File(...)):
+    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=400, detail="Please upload a JPG, PNG or WebP photo or scan of the ECG.")
+    data = file.file.read(10 * 1024 * 1024 + 1)
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="That image is larger than 10 MB.")
+    mime = file.content_type
+    try:
+        import io
+
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        img.thumbnail((1600, 1600))
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=88)
+        data, mime = buf.getvalue(), "image/jpeg"
+    except ImportError:
+        pass
+    except Exception:
+        raise HTTPException(status_code=400, detail="That file couldn't be read as an image.")
+    try:
+        found = _parse_json(_generate(ECG_PROMPT, data=data, mime=mime, json_mode=True))
+    except Exception as e:
+        print("analyze-ecg error:", type(e).__name__, str(e)[:200])
+        raise HTTPException(status_code=503, detail="The AI services are busy. Please try again in a moment.")
+    if not isinstance(found, dict):
+        found = {}
+    concern = str(found.get("concern", "")).strip().capitalize()
+    if concern not in ("Low", "Moderate", "High"):
+        concern = "Cannot tell"
+    rate = found.get("heart_rate_bpm")
+    try:
+        rate = int(round(float(rate)))
+        rate = rate if 20 <= rate <= 250 else None
+    except (TypeError, ValueError):
+        rate = None
+    findings = found.get("findings")
+    findings = [str(x).strip()[:200] for x in findings if str(x).strip()][:5] if isinstance(findings, list) else []
+    quality = str(found.get("quality", "")).strip().lower()
+    return {
+        "is_ecg": bool(found.get("is_ecg", True)),
+        "quality": quality if quality in ("good", "fair", "poor") else "fair",
+        "heart_rate": rate,
+        "rhythm": str(found.get("rhythm", "")).strip()[:60] or "cannot tell",
+        "findings": findings,
+        "concern": concern,
+        "summary": str(found.get("summary", "")).strip()[:600],
+    }

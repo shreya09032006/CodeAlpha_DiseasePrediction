@@ -4,6 +4,7 @@ import type { Theme } from "../theme";
 const links = [
   { to: "/", label: "Home" },
   { to: "/predict", label: "Predict" },
+  { to: "/ecg", label: "ECG" },
   { to: "/reports", label: "Reports" },
   { to: "/assistant", label: "Assistant" },
   { to: "/doctors", label: "Doctors" },

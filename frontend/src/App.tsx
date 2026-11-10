@@ -6,6 +6,7 @@ import Predict from "./pages/Predict";
 import Reports from "./pages/Reports";
 import Assistant from "./pages/Assistant";
 import Doctors from "./pages/Doctors";
+import Ecg from "./pages/Ecg";
 
 export default function App() {
   const { theme, toggle } = useTheme();
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/predict" element={<Predict />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/assistant" element={<Assistant />} />
+          <Route path="/ecg" element={<Ecg />} />
           <Route path="/doctors" element={<Doctors />} />
         </Routes>
       </main>

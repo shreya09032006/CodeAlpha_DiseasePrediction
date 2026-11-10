@@ -9,6 +9,4 @@ pydanticpython-multipart
 google-genai
 python-dotenv
 pymupdf
-torch
-torchvision
 pillow

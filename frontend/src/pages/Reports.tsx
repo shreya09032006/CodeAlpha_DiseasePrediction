@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
@@ -22,6 +22,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [assessing, setAssessing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
 
   const assess = async (vals: Record<string, string | number>) => {
     setAssessing(true);
@@ -43,7 +45,23 @@ export default function Reports() {
     setValues(null);
     setAssessment(null);
     setError("");
-    setPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : "");
+    setPreview((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return f && f.type.startsWith("image/") ? URL.createObjectURL(f) : "";
+    });
+  };
+
+  const clearAll = () => {
+    setFile(null);
+    setValues(null);
+    setAssessment(null);
+    setError("");
+    setPreview((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return "";
+    });
+    if (fileRef.current) fileRef.current.value = "";
+    if (camRef.current) camRef.current.value = "";
   };
 
   const upload = async () => {
@@ -83,7 +101,7 @@ export default function Reports() {
 
         <div className="reports-layout">
           <label className="dropzone">
-            <input type="file" accept="image/*,application/pdf" onChange={onChange} hidden />
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onChange} hidden />
             <div className="dropzone-icon-wrap">
               <span className="material-symbols-outlined" style={{ fontSize: "28px" }}>
                 cloud_upload
@@ -150,12 +168,21 @@ export default function Reports() {
             marginTop: "16px",
           }}
         >
-          <button className="btn primary" onClick={upload} disabled={!file || loading} type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-              instant_mix
-            </span>
-            <span>{loading ? "Extracting…" : "Extract values"}</span>
-          </button>
+                    <div className="actions" style={{ margin: 0 }}>
+            <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={onChange} hidden />
+            <button className="btn primary" onClick={upload} disabled={!file || loading} type="button">
+              <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>instant_mix</span>
+              <span>{loading ? "Extracting…" : "Extract values"}</span>
+            </button>
+            <button className="btn ghost cam-btn" type="button" onClick={() => camRef.current?.click()}>
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>photo_camera</span>
+              <span>Take photo</span>
+            </button>
+            <button className="btn ghost" type="button" onClick={clearAll} disabled={!file && !values && !error}>
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_sweep</span>
+              <span>Clear</span>
+            </button>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--muted)" }}>
             <span className="pulse-dot" />
             <span>Neural Engine Active</span>

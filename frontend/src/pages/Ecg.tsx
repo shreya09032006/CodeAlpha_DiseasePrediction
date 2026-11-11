@@ -14,6 +14,7 @@ export default function Ecg() {
   const [error, setError] = useState("");
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
@@ -58,6 +59,7 @@ export default function Ecg() {
     setResult(null);
     setError("");
     if (inputRef.current) inputRef.current.value = "";
+    if (camRef.current) camRef.current.value = "";
   };
 
   return (
@@ -100,9 +102,21 @@ export default function Ecg() {
         </div>
 
         <div className="actions">
+            <input
+            ref={camRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(e: ChangeEvent<HTMLInputElement>) => pick(e.target.files?.[0])}
+          />
           <button className="btn primary" type="button" onClick={analyze} disabled={!file || loading}>
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>auto_awesome</span>
             <span>{loading ? "Reading…" : "Read my ECG"}</span>
+          </button>
+          <button className="btn ghost cam-btn" type="button" onClick={() => camRef.current?.click()}>
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>photo_camera</span>
+            <span>Take photo</span>
           </button>
           <button className="btn ghost" type="button" onClick={clearAll} disabled={!file && !result && !error}>
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_sweep</span>

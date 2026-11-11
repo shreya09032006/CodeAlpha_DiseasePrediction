@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import axios from "axios";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_URL } from "../config";
 
 const SPECIALTIES = [
   { id: "diabetes", label: "Diabetes (Endocrinologist)", regex: "endocrinology|diabetology|diabetes", nameRe: /endocrin|diabet|thyroid|sugar/i },
@@ -16,8 +18,6 @@ const EXCLUDE =
 // Well-known / large hospitals, matched by name
 const BIG =
   /apollo|fortis|lilavati|hinduja|kokilaben|jaslok|wockhardt|manipal|narayana|medanta|\bmax\b|aiims|civil|district|government|govt|general hospital|multi.?speciality|super.?speciality|medical college|medical cent(re|er)|d\.? ?y\.? ?patil|\bmgm\b|tata|rural hospital|sub.?district|city hospital|sassoon|nanavati|breach candy|bhatia|saifee|columbia asia|sahyadri|jupiter|ruby hall|\bkem\b/i;
-
-const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 
 type Tier = "specialist" | "surgeon" | "major";
 
@@ -60,17 +60,10 @@ function classify(tags: Record<string, string>, specId: string): Tier | null {
   return null;
 }
 
-async function overpass(query: string) {
-  let lastErr: unknown = new Error("overpass");
-  for (const url of ENDPOINTS) {
-    try {
-      const res = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(query) });
-      if (res.ok) return await res.json();
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw lastErr;
+// Map data is fetched by our own backend, which tries several public servers for us.
+async function nearby(lat: number, lon: number, radius: number) {
+  const res = await axios.get(`${API_URL}/places/nearby`, { params: { lat, lon, radius }, timeout: 70000 });
+  return res.data as { elements: OverpassEl[] };
 }
 
 export default function Doctors() {
@@ -117,11 +110,7 @@ export default function Doctors() {
     let message = "";
     const radii = Array.from(new Set([radius, 25000, 50000])).filter((r) => r >= radius);
     for (const r of radii) {
-      const query = `[out:json][timeout:25];(
-        nwr["amenity"~"^(hospital|clinic|doctors)$"](around:${r},${lat},${lon});
-        nwr["healthcare"~"^(hospital|clinic|doctor)$"](around:${r},${lat},${lon});
-      );out center 250;`;
-      const json = await overpass(query);
+      const json = await nearby(lat, lon, r);
       const seen = new Set<string>();
       const all: Place[] = [];
       for (const el of json.elements as OverpassEl[]) {
@@ -211,11 +200,8 @@ export default function Doctors() {
     guard(async () => {
       const q = placeText.trim();
       if (!q) throw new Error("place");
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=in&q=${encodeURIComponent(q)}`
-      );
-      if (!res.ok) throw new Error("geocode");
-      const hits = (await res.json()) as { lat: string; lon: string; display_name: string }[];
+      const res = await axios.get(`${API_URL}/places/geocode`, { params: { q }, timeout: 30000 });
+      const hits = res.data as { lat: string; lon: string; display_name: string }[];
       if (!hits.length) throw new Error("place");
       const label = hits[0].display_name.split(",").slice(0, 2).join(",").trim();
       await runSearch(parseFloat(hits[0].lat), parseFloat(hits[0].lon), label);

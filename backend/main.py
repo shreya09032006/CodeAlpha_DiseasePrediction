@@ -124,5 +124,7 @@ def diet_plan(req: DietPlanRequest):
     return {"plan": plan, "sources": sources}
 from extras import router as extras_router
 app.include_router(extras_router, dependencies=[Depends(current_user)])
+from places import router as places_router
+app.include_router(places_router, dependencies=[Depends(current_user)])
 from auth import router as auth_router
 app.include_router(auth_router)

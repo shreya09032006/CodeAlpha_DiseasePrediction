@@ -15,11 +15,17 @@ NAMES = ["breast_cancer", "heart", "diabetes"]
 MODELS = {n: joblib.load(MODEL_DIR / f"{n}.joblib") for n in NAMES}
 META = {n: json.load(open(MODEL_DIR / f"{n}_meta.json")) for n in NAMES}
 
+from fastapi import Depends
+from auth import current_user
+import os as _os
+# Comma-separated list of allowed sites, e.g. https://your-app.vercel.app (default: any, for local use)
+_CORS_ORIGINS = [o.strip().rstrip("/") for o in _os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+
 app = FastAPI(title="Disease Prediction API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten to your frontend URL after deploying
+    allow_origins=_CORS_ORIGINS,  # tighten to your frontend URL after deploying
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -72,17 +78,17 @@ def home():
     return {"status": "ok", "diseases": NAMES}
 
 
-@app.post("/predict/breast-cancer")
+@app.post("/predict/breast-cancer", dependencies=[Depends(current_user)])
 def breast_cancer(data: BreastCancerInput):
     return predict("breast_cancer", data)
 
 
-@app.post("/predict/heart")
+@app.post("/predict/heart", dependencies=[Depends(current_user)])
 def heart(data: HeartInput):
     return predict("heart", data)
 
 
-@app.post("/predict/diabetes")
+@app.post("/predict/diabetes", dependencies=[Depends(current_user)])
 def diabetes(data: DiabetesInput):
     return predict("diabetes", data)
 
@@ -98,7 +104,7 @@ class DietPlanRequest(BaseModel):
     allergies: str = "none"
 
 
-@app.post("/chat")
+@app.post("/chat", dependencies=[Depends(current_user)])
 def chat(req: ChatRequest):
     try:
         reply, sources = rag.answer(req.message)
@@ -108,7 +114,7 @@ def chat(req: ChatRequest):
     return {"reply": reply, "sources": sources}
 
 
-@app.post("/diet-plan")
+@app.post("/diet-plan", dependencies=[Depends(current_user)])
 def diet_plan(req: DietPlanRequest):
     try:
         plan, sources = rag.diet_plan(req.model_dump())
@@ -117,6 +123,6 @@ def diet_plan(req: DietPlanRequest):
         raise HTTPException(status_code=503, detail="Assistant unavailable")
     return {"plan": plan, "sources": sources}
 from extras import router as extras_router
-app.include_router(extras_router)
+app.include_router(extras_router, dependencies=[Depends(current_user)])
 from auth import router as auth_router
 app.include_router(auth_router)

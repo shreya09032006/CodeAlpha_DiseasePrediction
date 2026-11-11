@@ -2,10 +2,15 @@
 
 Browsers get blocked when the free public map servers are busy (they answer errors
 without CORS headers). Asking from the server avoids that, lets us try several
-mirrors, and lets us remember recent answers.
+sources, and lets us remember recent answers.
+
+Source 1: Overpass mirrors (detailed OpenStreetMap queries).
+Source 2: Nominatim place search (the same OpenStreetMap data), used when the
+          Overpass servers cannot be reached from this host.
 """
+import math
 import time
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
@@ -21,14 +26,20 @@ OVERPASS_MIRRORS = [
 ]
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 CACHE_SECONDS = 600
-PER_SERVER_SECONDS = 18
-MAX_TOTAL_SECONDS = 62
+PER_SERVER_SECONDS = 8
+MAX_OVERPASS_SECONDS = 26
+OVERPASS_REST_SECONDS = 300  # after a full failure, skip Overpass for a while
+SEARCH_TERMS = [
+    "hospital", "clinic", "cardiologist", "heart", "diabetes",
+    "endocrinologist", "oncologist", "cancer", "breast", "surgeon",
+]
 
 # Names or specialities that matter for the three conditions (heart, diabetes, breast cancer).
 KEYWORDS = "cardi|heart|diabet|endocrin|thyroid|sugar|oncolog|cancer|breast|mammo|surg"
 
 _cache: Dict[str, Tuple[float, Any]] = {}
 _client = None
+_overpass_rest_until = 0.0
 
 
 def _http() -> httpx.Client:
@@ -71,6 +82,84 @@ def build_query(lat: float, lon: float, radius: int) -> str:
     return "[out:json][timeout:20];(" + "".join(parts) + ");out center 250;"
 
 
+def _from_overpass(lat: float, lon: float, radius: int):
+    """Returns a list of elements, or None if every mirror failed."""
+    global _overpass_rest_until
+    if time.time() < _overpass_rest_until:
+        return None
+    query = build_query(lat, lon, radius)
+    started = time.time()
+    for url in OVERPASS_MIRRORS:
+        if time.time() - started > MAX_OVERPASS_SECONDS:
+            break
+        try:
+            r = _http().post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": USER_AGENT},
+                timeout=PER_SERVER_SECONDS,
+            )
+            if r.status_code != 200:
+                print("Overpass", url, "status", r.status_code, r.text[:150].replace("\n", " "))
+                continue
+            data = r.json()
+            if "elements" not in data or (not data["elements"] and data.get("remark")):
+                print("Overpass", url, "returned an error remark:", str(data.get("remark"))[:120])
+                continue
+            print("Overpass", url, "OK,", len(data["elements"]), "places in", round(time.time() - started, 1), "s")
+            return data["elements"]
+        except Exception as e:
+            print("Overpass", url, "failed:", type(e).__name__, str(e)[:120])
+    _overpass_rest_until = time.time() + OVERPASS_REST_SECONDS
+    print("Overpass unreachable, using Nominatim for the next", OVERPASS_REST_SECONDS // 60, "minutes")
+    return None
+
+
+def _from_nominatim(lat: float, lon: float, radius: int):
+    """Same OpenStreetMap data through the place-search service. Returns (elements, errors)."""
+    dlat = radius / 111320.0
+    dlon = radius / (111320.0 * max(math.cos(math.radians(lat)), 0.2))
+    box = f"{lon - dlon},{lat + dlat},{lon + dlon},{lat - dlat}"  # left, top, right, bottom
+    found: Dict[Tuple[str, int], dict] = {}
+    errors = 0
+    for i, term in enumerate(SEARCH_TERMS):
+        if i:
+            time.sleep(1.05)  # Nominatim asks for at most one request per second
+        try:
+            r = _http().get(
+                NOMINATIM,
+                params={
+                    "format": "jsonv2", "q": term, "viewbox": box, "bounded": 1,
+                    "limit": 40, "extratags": 1, "countrycodes": "in",
+                },
+                headers={"User-Agent": USER_AGENT},
+                timeout=15,
+            )
+            r.raise_for_status()
+            rows: List[dict] = r.json()
+        except Exception as e:
+            errors += 1
+            print("Nominatim", repr(term), "failed:", type(e).__name__, str(e)[:120])
+            continue
+        for h in rows:
+            name = h.get("name") or ""
+            if not name or "osm_id" not in h:
+                continue
+            tags = dict(h.get("extratags") or {})
+            tags["name"] = name
+            if h.get("category") in ("amenity", "healthcare") and h.get("type"):
+                tags[h["category"]] = h["type"]
+            found[(h.get("osm_type", "node"), int(h["osm_id"]))] = {
+                "type": h.get("osm_type", "node"),
+                "id": int(h["osm_id"]),
+                "lat": float(h["lat"]),
+                "lon": float(h["lon"]),
+                "tags": tags,
+            }
+    print("Nominatim found", len(found), "places,", errors, "failed searches")
+    return list(found.values()), errors
+
+
 @router.get("/geocode")
 def geocode(q: str = Query(..., min_length=2, max_length=120)):
     """Turn an area name into coordinates. Returns the same list shape Nominatim uses."""
@@ -103,34 +192,19 @@ def nearby(
     lon: float = Query(..., ge=-180, le=180),
     radius: int = Query(10000, ge=1000, le=50000),
 ):
-    """Hospitals, clinics and doctors around a point, as raw Overpass elements."""
+    """Hospitals, clinics and doctors around a point, as Overpass-style elements."""
     key = f"n:{round(lat, 3)}:{round(lon, 3)}:{radius}"
     cached = _get(key)
     if cached is not None:
         return cached
 
-    query = build_query(lat, lon, radius)
-    started = time.time()
-    for url in OVERPASS_MIRRORS:
-        if time.time() - started > MAX_TOTAL_SECONDS:
-            break
-        try:
-            r = _http().post(
-                url,
-                data={"data": query},
-                headers={"User-Agent": USER_AGENT},
-                timeout=PER_SERVER_SECONDS,
-            )
-            if r.status_code != 200:
-                print("Overpass", url, "status", r.status_code, r.text[:150].replace("\n", " "))
-                continue
-            data = r.json()
-            if "elements" not in data or (not data["elements"] and data.get("remark")):
-                print("Overpass", url, "returned an error remark:", str(data.get("remark"))[:120])
-                continue
-            _put(key, {"elements": data["elements"]})
-            print("Overpass", url, "OK,", len(data["elements"]), "places in", round(time.time() - started, 1), "s")
-            return {"elements": data["elements"]}
-        except Exception as e:
-            print("Overpass", url, "failed:", type(e).__name__, str(e)[:120])
-    raise HTTPException(status_code=502, detail="The map data service is busy. Please try again in a minute.")
+    elements = _from_overpass(lat, lon, radius)
+    source = "overpass"
+    if elements is None:
+        elements, errors = _from_nominatim(lat, lon, radius)
+        source = "nominatim"
+        if not elements and errors:
+            raise HTTPException(status_code=502, detail="The map data service is busy. Please try again in a minute.")
+    result = {"elements": elements, "source": source}
+    _put(key, result)
+    return result

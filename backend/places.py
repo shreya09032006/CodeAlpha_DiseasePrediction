@@ -21,9 +21,25 @@ OVERPASS_MIRRORS = [
 ]
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 CACHE_SECONDS = 600
-MAX_TOTAL_SECONDS = 50
+PER_SERVER_SECONDS = 18
+MAX_TOTAL_SECONDS = 62
+
+# Names or specialities that matter for the three conditions (heart, diabetes, breast cancer).
+KEYWORDS = "cardi|heart|diabet|endocrin|thyroid|sugar|oncolog|cancer|breast|mammo|surg"
 
 _cache: Dict[str, Tuple[float, Any]] = {}
+_client = None
+
+
+def _http() -> httpx.Client:
+    """One shared client that only uses IPv4 (some hosts cannot reach IPv6 routes)."""
+    global _client
+    if _client is None:
+        _client = httpx.Client(
+            transport=httpx.HTTPTransport(local_address="0.0.0.0", retries=1),
+            follow_redirects=True,
+        )
+    return _client
 
 
 def _get(key: str):
@@ -39,6 +55,22 @@ def _put(key: str, value: Any):
     _cache[key] = (time.time() + CACHE_SECONDS, value)
 
 
+def build_query(lat: float, lon: float, radius: int) -> str:
+    """A light query: exact tag matches first, text matching only on small candidate sets."""
+    a = f"(around:{radius},{lat},{lon})"
+    parts = [
+        f'nwr["amenity"="hospital"]["name"]{a};',
+        f'nwr["healthcare"="hospital"]["name"]{a};',
+        f'nwr["amenity"="clinic"]["healthcare:speciality"]{a};',
+        f'nwr["amenity"="doctors"]["healthcare:speciality"]{a};',
+        f'nwr["amenity"="clinic"]["name"~"{KEYWORDS}",i]{a};',
+        f'nwr["amenity"="doctors"]["name"~"{KEYWORDS}",i]{a};',
+        f'nwr["healthcare"="clinic"]["name"~"{KEYWORDS}",i]{a};',
+        f'nwr["healthcare"="doctor"]["name"~"{KEYWORDS}",i]{a};',
+    ]
+    return "[out:json][timeout:20];(" + "".join(parts) + ");out center 250;"
+
+
 @router.get("/geocode")
 def geocode(q: str = Query(..., min_length=2, max_length=120)):
     """Turn an area name into coordinates. Returns the same list shape Nominatim uses."""
@@ -47,7 +79,7 @@ def geocode(q: str = Query(..., min_length=2, max_length=120)):
     if cached is not None:
         return cached
     try:
-        r = httpx.get(
+        r = _http().get(
             NOMINATIM,
             params={"format": "jsonv2", "limit": 1, "countrycodes": "in", "q": q.strip()},
             headers={"User-Agent": USER_AGENT},
@@ -77,26 +109,27 @@ def nearby(
     if cached is not None:
         return cached
 
-    query = (
-        "[out:json][timeout:25];("
-        f'nwr["amenity"~"^(hospital|clinic|doctors)$"](around:{radius},{lat},{lon});'
-        f'nwr["healthcare"~"^(hospital|clinic|doctor)$"](around:{radius},{lat},{lon});'
-        ");out center 250;"
-    )
+    query = build_query(lat, lon, radius)
     started = time.time()
     for url in OVERPASS_MIRRORS:
         if time.time() - started > MAX_TOTAL_SECONDS:
             break
         try:
-            r = httpx.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=25)
+            r = _http().post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": USER_AGENT},
+                timeout=PER_SERVER_SECONDS,
+            )
             if r.status_code != 200:
-                print("Overpass", url, "status", r.status_code)
+                print("Overpass", url, "status", r.status_code, r.text[:150].replace("\n", " "))
                 continue
             data = r.json()
             if "elements" not in data or (not data["elements"] and data.get("remark")):
                 print("Overpass", url, "returned an error remark:", str(data.get("remark"))[:120])
                 continue
             _put(key, {"elements": data["elements"]})
+            print("Overpass", url, "OK,", len(data["elements"]), "places in", round(time.time() - started, 1), "s")
             return {"elements": data["elements"]}
         except Exception as e:
             print("Overpass", url, "failed:", type(e).__name__, str(e)[:120])

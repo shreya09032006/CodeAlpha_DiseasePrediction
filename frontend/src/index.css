@@ -2138,8 +2138,7 @@ input:focus, select:focus {
 @media (max-width: 760px) { .nav-user { display: none; } }
 
 /* ==== Mobile polish + camera button ==== */
-.cam-btn { display: none; }
-@media (pointer: coarse), (max-width: 820px) { .cam-btn { display: inline-flex; } }
+.cam-btn { display: inline-flex; }
 
 .reports-layout > *, .card, .chat-console { min-width: 0; }
 .dropzone-title { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }

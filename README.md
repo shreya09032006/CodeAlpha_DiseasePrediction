@@ -8,6 +8,8 @@ Built for the **CodeAlpha Machine Learning Internship**
 
 [**Live demo**](https://code-alpha-disease-prediction-sigma.vercel.app) · [Backend API](https://codealpha-diseaseprediction-yx30.onrender.com) · [Features](#-features) · [Run locally](#-run-it-locally)
 
+🎥 **[Watch the demo video](https://lnkd.in/p/d-cyCzYN)**
+
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black)
